@@ -13,7 +13,7 @@ const RegisterPage: React.FC = () => {
 const handleRegisterSuccess = async (registeredEmail: string) => {
   setEmail(registeredEmail);
   try {
-    await axios.put(API_ENDPOINTS.auth.resetPasswordInitiate, {
+    await axios.put(API_ENDPOINTS.auth.verifyAccountInitiate, {
       email: registeredEmail,
     });
     console.log('Verification code sent to email:', registeredEmail);

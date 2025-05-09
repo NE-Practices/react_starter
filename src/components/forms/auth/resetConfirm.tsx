@@ -17,12 +17,14 @@ const ResetConfirmForm: React.FC<ResetConfirmFormProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
+  const [step, setStep] = useState(1);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
+    trigger,
   } = useForm<{ code: string; password: string; confirmPassword: string }>();
 
   const handleOtpChange = (index: number, value: string) => {
@@ -31,14 +33,17 @@ const ResetConfirmForm: React.FC<ResetConfirmFormProps> = ({
     updatedOtp[index] = value;
     setOtp(updatedOtp);
     if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
+      document.getElementById(`otp-${index + 1}`)?.focus();
     }
-    setValue("code", updatedOtp.join(""));
+    const joinedCode = updatedOtp.join("");
+    setValue("code", joinedCode);
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+  const togglePasswordVisibility = () => setShowPassword((prev) => !prev);
+
+  const handleNext = async () => {
+    const isValid = await trigger("code");
+    if (isValid) setStep(2);
   };
 
   const onSubmit = async (data: {
@@ -50,6 +55,7 @@ const ResetConfirmForm: React.FC<ResetConfirmFormProps> = ({
       toast.error("Passwords do not match");
       return;
     }
+
     try {
       const response = await axios.put(
         API_ENDPOINTS.auth.resetPasswordConfirm,
@@ -87,92 +93,112 @@ const ResetConfirmForm: React.FC<ResetConfirmFormProps> = ({
     >
       <h2 className="text-2xl font-semibold text-black">Reset Password</h2>
 
-      <div>
-        <label className="block mb-1 font-medium text-black">Reset Code</label>
-        <div className="flex gap-2">
-          {otp.map((digit, index) => (
-            <Input
-              key={index}
-              id={`otp-${index}`}
-              type="text"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleOtpChange(index, e.target.value)}
-              className="w-20 h-20 text-center border-black"
-            />
-          ))}
+      {step === 1 && (
+        <div>
+          <label className="block mb-1 font-medium text-black">
+            Reset Code
+          </label>
+          <div className="flex gap-2 mb-2">
+            {otp.map((digit, index) => (
+              <Input
+                key={index}
+                id={`otp-${index}`}
+                type="text"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleOtpChange(index, e.target.value)}
+                className="w-14 h-14 text-center border-black"
+              />
+            ))}
+          </div>
+          {errors.code && (
+            <p className="text-purple-600 text-sm mt-1">
+              {errors.code.message}
+            </p>
+          )}
+          <input
+            type="hidden"
+            {...register("code", { required: "Reset code is required" })}
+          />
+          <Button
+            type="button"
+            onClick={handleNext}
+            className="w-full bg-purple-600 py-6 mt-4"
+          >
+            Next
+          </Button>
         </div>
-        {errors.code && (
-          <p className="text-purple-600 text-sm mt-1">{errors.code.message}</p>
-        )}
-        <input
-          type="hidden"
-          {...register("code", { required: "Reset code is required" })}
-        />
-      </div>
+      )}
 
-      <div className="relative">
-        <label htmlFor="password" className="block mb-1 font-medium text-black">
-          New Password
-        </label>
-        <Input
-          id="password"
-          type={showPassword ? "text" : "password"}
-          {...register("password", { required: "Password is required" })}
-          className="border-black pr-10  py-6"
-        />
-        <button
-          type="button"
-          onClick={togglePasswordVisibility}
-          className="absolute right-3 top-11 text-gray-500"
-          tabIndex={-1}
-        >
-          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
-        {errors.password && (
-          <p className="text-purple-600 text-sm mt-1">
-            {errors.password.message}
-          </p>
-        )}
-      </div>
+      {step === 2 && (
+        <>
+          <div className="relative">
+            <label
+              htmlFor="password"
+              className="block mb-1 font-medium text-black"
+            >
+              New Password
+            </label>
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              {...register("password", { required: "Password is required" })}
+              className="border-black pr-10 py-6"
+            />
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute right-3 top-11 text-gray-500"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+            {errors.password && (
+              <p className="text-purple-600 text-sm mt-1">
+                {errors.password.message}
+              </p>
+            )}
+          </div>
 
-      <div className="relative">
-        <label
-          htmlFor="confirmPassword"
-          className="block mb-1 font-medium text-black"
-        >
-          Confirm Password
-        </label>
-        <Input
-          id="confirmPassword"
-          type={showPassword ? "text" : "password"}
-          {...register("confirmPassword", {
-            required: "Confirm password is required",
-          })}
-          className="border-black pr-10  py-6"
-        />
-        <button
-          type="button"
-          onClick={togglePasswordVisibility}
-          className="absolute right-3 top-11 text-gray-500"
-          tabIndex={-1}
-        >
-          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
-        {errors.confirmPassword && (
-          <p className="text-purple-600 text-sm mt-1">
-            {errors.confirmPassword.message}
-          </p>
-        )}
-      </div>
+          <div className="relative">
+            <label
+              htmlFor="confirmPassword"
+              className="block mb-1 font-medium text-black"
+            >
+              Confirm Password
+            </label>
+            <Input
+              id="confirmPassword"
+              type={showPassword ? "text" : "password"}
+              {...register("confirmPassword", {
+                required: "Confirm password is required",
+              })}
+              className="border-black pr-10 py-6"
+            />
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute right-3 top-11 text-gray-500"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+            {errors.confirmPassword && (
+              <p className="text-purple-600 text-sm mt-1">
+                {errors.confirmPassword.message}
+              </p>
+            )}
+          </div>
 
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full bg-purple-600 hover:bg-purple-700 py-6"
-      >
-        {isSubmitting ? "Resetting..." : "Reset Password"}
-      </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-purple-600 hover:bg-purple-700 py-6"
+          >
+            {isSubmitting ? "Resetting..." : "Reset Password"}
+          </Button>
+        </>
+      )}
     </form>
   );
 };
